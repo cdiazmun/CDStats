@@ -328,7 +328,7 @@ As we can see, the eveness of the sample depends on the $\\alpha$-diversity prev
 
 # $\\beta$-diversity
 
-This diversity metric is going to describe the dissimilarity of the samples regarding their microbial composition. The first thing we need to do to execute the functions to calculate these $\\beta$-diversity indexes is to add a factor as a `column` of our `DataFrame`, so that we can use it as a factor. We are going to generate a new `DataFrame`with the same microorganisms but a different distribution and since these indexes work better with a big set of data, I am going to repeat the samples three times to build some statistical power. Let's imagine that we have a few samples inoculated with a starter made of *Lactobacillus* and *Acetobacter* and others that are not inoculated.
+This diversity metric is going to describe the dissimilarity of the samples regarding their microbial composition. The first thing we need to do to execute the functions to calculate these $\\beta$-diversity indexes is to add a factor as a `column` of our `DataFrame`, so that we can use it as a factor. We are going to generate a new `DataFrame`with the same microorganisms but a different distribution and since these indexes work better with a big set of data, I am going to repeat the samples three times to build some statistical power. Let's imagine that we have a few samples inoculated with a starter made of *Lactobacillus* and *Acetobacter* and others that are not inoculated. We are going to also include another factor called *pH* 
 
 ```
 Lactobacillus <- rep(c(0,20,0,10,15,2),3)
@@ -336,25 +336,74 @@ Acetobacter <- rep(c(0,30,4,14,28,3),3)
 Escherichia <- rep(c(21,0,10,2,0,20),3)
 Salmonella <- rep(c(20,1,40,0,1,25),3)
 Starter <- rep(c(FALSE, TRUE, FALSE, TRUE, TRUE, FALSE),3)
+pH <- rep(c("acid", "neutral", "basic", "neutral", "basic", "acid"),3)
 Sample <- c("A", "B", "C", "D", "E", "F",
             "G", "H", "I", "J", "K", "L",
             "M", "N", "O", "P", "Q", "R")
 
-micro2 <- data.frame(Lactobacillus, Acetobacter, Escherichia, Salmonella, Starter, Sample,
-                    row.names = Sample)
+micro2 <- data.frame(Lactobacillus, Acetobacter, Escherichia, Salmonella, Starter, pH,
+                     row.names = Sample)
 head(micro2)
 
-  Lactobacillus Acetobacter Escherichia Salmonella Starter Sample
-A             0           0          21         20   FALSE      A
-B            20          30           0          1    TRUE      B
-C             0           4          10         40   FALSE      C
-D            10          14           2          0    TRUE      D
-E            15          28           0          1    TRUE      E
-F             2           3          20         25   FALSE      F
+  Lactobacillus Acetobacter Escherichia Salmonella Starter      pH
+A             0           0          21         20   FALSE    acid
+B            20          30           0          1    TRUE neutral
+C             0           4          10         40   FALSE   basic
+D            10          14           2          0    TRUE neutral
+E            15          28           0          1    TRUE   basic
+F             2           3          20         25   FALSE    acid
 ```
-The first calculation we are going to do is a *PERMANOVA* (Permutational Multivariate Analysis of Variance) to evaluate how a factor (in this case a different sample, which putatively in your case have different 
 
+The first calculation we are going to do is a *PERMANOVA* (Permutational Multivariate Analysis of Variance) to evaluate how a factor, in this case the use of a starter, influences the microbial distribution in the samples. A common method used to calculate dissimilarity indexes in complex microbial ecosystem is the *Bray-Curtis*, but there are a myriad of them, use the one that better applies to your biological problem.
+```
+permanova <- adonis(micro2[1:4] ~ Starter, data = micro2, method = "bray") 
+permanova
 
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+          Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+Starter    1    3.4381  3.4381  117.32 0.87999  0.001 ***
+Residuals 16    0.4689  0.0293         0.12001           
+Total     17    3.9070                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+``` 
+Good, we see that there is a significant difference between the microbial community of the samples inoculated with a starter culture and those non-inoculated. Let's analyze the effect of the pH now:
+```
+permanova <- adonis(micro2[1:4] ~ pH, data = micro2, method = "bray") 
+permanova
+
+          Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+pH         2    2.4628 1.23139   12.79 0.63036  0.001 ***
+Residuals 15    1.4442 0.09628         0.36964           
+Total     17    3.9070                 1.00000           
+``` 
+There is also an effect of the pH! But we included three different groups in that factor ("acid", "neutral", and "basic), let's imagine we want to see how these compare between themselves. To do that, we need to perform a pairwise permanova. We saw before that the number of permutations is 999 by default, but we can expand it if we want (to be more certain about the result), but be carefult because this grows exponentially in computation time. In this function, *Bray-Curtis* is not an option and given the simplicity of our data, we can use *Euclidean* distances.
+
+```
+pairwise.perm.manova(dist(micro2[1:4], "euclidean"), micro2$pH, nperm=10000)
+
+        acid   basic 
+basic   0.0697 -     
+neutral 0.0072 0.1437
+```
+Interesting, we see that there is a significant difference between neutral-acid, but not between neutral-basic or basic-acid. If these factors would have a real biological meaning in your dataset, you see now how importan it would be to perform the pairwise comparisons, you can conclude many more things from your microbial community dataset. 
+
+The last thing that we can calculate in case we have a very complex ecosystem (not like our toy example) with many microorganisms, is a dissimilarity analysis. This analysis will show us which microorganisms (columns) are more responsible (or influence the most) for the difference observed between the samples. In this case is a little bit nonsense because the dataframe is just too simple and made up, but it serves for you to see what output to expect.
+
+```
+sim <- simper(micro2[1:4], group = micro2$Starter, permutations = 10000) 
+summary(sim)
+
+              average      sd ratio     ava     avb cumsum         p    
+Salmonella     0.3133 0.09150 3.424 28.3333  0.6667 0.3474 9.999e-05 ***
+Acetobacter    0.2400 0.06723 3.570  2.3333 24.0000 0.6135 9.999e-05 ***
+Escherichia    0.1893 0.06797 2.785 17.0000  0.6667 0.8234 9.999e-05 ***
+Lactobacillus  0.1593 0.03299 4.827  0.6667 15.0000 1.0000 9.999e-05 ***
+```
 
 
 
