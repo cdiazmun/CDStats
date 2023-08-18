@@ -275,4 +275,87 @@ virginica:B-setosa:B       1.684  1.26194478  2.1060552 0.0000000
 virginica:B-versicolor:B   0.792  0.36994478  1.2140552 0.0000036
 ```
 
+# $\\alpha$-diversity
+
+I will start with a disclaimer. You are not going to find here the most precise and mathematically accurate definition of this or any other diversity metric. If you are looking for something like that, I rather recommend you to go to a guide or vignette on how to use the `vegan()` package, for example. I am going to build a made-up `DataFrame` that serves as an intuitive example to comprehend in a more practical way what the $\\alpha$-diversity is telling us about our sample (microbial community). 
+
+So, let's create our `DataFrame` in which every column will be a microbial genus and every row a different sample. The numerical values can represent relative abundances or absolute numbers (typically sequence reads). Let's simulate the latter. 
+
+```
+Lactobacillus <- c(0,20,0,10,15)
+Acetobacter <- c(4,8,4,10,3)
+Escherichia <- c(2,30,0,0,0)
+Salmonella <- c(20,10,0,10,8)
+samples <- c("A", "B", "C", "D", "E")
+
+micro <- data.frame(Lactobacillus, Acetobacter, Escherichia, Salmonella,
+                    row.names = samples)
+micro
+
+  Lactobacillus Acetobacter Escherichia Salmonella
+A             0           4           2         20
+B            20           8          30         10
+C             0           4           0          0
+D            10          10           0         10
+E            15           3           0          8
+```
+
+We are going to calculate a few diversity indexes on that easy table in which every organism is detected in different ratios in each of the samples. Again, I am not going to explain how these indexes work, there are clear explanations online or simply typing `?diversity()` and reading the description. Actually, the function `diversity()` is part of the `vegan()` package, a community ecology package designed by Jari Oksanen. As described in the package documentation, "the functions in the vegan package contain tools for diversity analysis, ordination methods and tools for the analysis of dissimilarities". Let's start calculating some stuff then.
+```
+Shannon <- diversity(micro, index = "shannon")
+Shannon
+
+        A         B         C         D         E 
+0.6870920 1.2546261 0.0000000 1.0986123 0.9291688
+```
+Sample C has a Shannon index of `0.0` because there's only one microorganism present in the sample, but B has more than `1.0` because there are a lot of different microorganisms in the sample. So, the largest the Shannon index is, the higher the microbial diversity in our sample. However, *Shannon* is not the only metric that exists to calculate the diversity of a sample, we can also use other approximations, such as the *Simpson* method. I have always encountered a very high correlation between the two indexes, so as it says in the documentation... "[...] these indices are all very closely related (Hill 1973), and there is no reason to despise one more than others (but if you are a graduate student, don't drag me in, but obey your Professor's orders)". I may add that the Simpson index fluctuates between 0.0 and 1.0, so it may be more intuitive to understand the result and give it a biological meaning.  
+```
+Simpson <- diversity(micro, index = "simpson")
+Simpson
+
+        A         B         C         D         E 
+0.3786982 0.6833910 0.0000000 0.6666667 0.5591716
+```
+A measure that is also important to evaluate when studying a microbial community is the *eveness*. Given a diversity in the sample, that diversity can be distributed in a more equal or unequal way. We use the *Pielou* index to calculate that. A calculated value of *Pielou's evenness* ranges from 0 (no evenness) to 1 (complete evenness). 
+```
+Pielou <- Shannon/log(specnumber(micro))
+Pielou
+
+        A         B         C         D         E 
+0.6254181 0.9050214       NaN 1.0000000 0.8457659
+```
+As we can see, the eveness of the sample depends on the $\\alpha$-diversity previously calculated. The evennes of sample D is `1.0` (max) because all the microorganisms present are equally distributed, but A is `~0.6` because the distribution of the microorganisms is very unequal. Since in sample C there is only one microorganism appearing, the diversity index was `0.0` and therefore, the calculation does not make any sense. 
+
+# $\\beta$-diversity
+
+This diversity metric is going to describe the dissimilarity of the samples regarding their microbial composition. The first thing we need to do to execute the functions to calculate these $\\beta$-diversity indexes is to add a factor as a `column` of our `DataFrame`, so that we can use it as a factor. We are going to generate a new `DataFrame`with the same microorganisms but a different distribution and since these indexes work better with a big set of data, I am going to repeat the samples three times to build some statistical power. Let's imagine that we have a few samples inoculated with a starter made of *Lactobacillus* and *Acetobacter* and others that are not inoculated.
+
+```
+Lactobacillus <- rep(c(0,20,0,10,15,2),3)
+Acetobacter <- rep(c(0,30,4,14,28,3),3)
+Escherichia <- rep(c(21,0,10,2,0,20),3)
+Salmonella <- rep(c(20,1,40,0,1,25),3)
+Starter <- rep(c(FALSE, TRUE, FALSE, TRUE, TRUE, FALSE),3)
+Sample <- c("A", "B", "C", "D", "E", "F",
+            "G", "H", "I", "J", "K", "L",
+            "M", "N", "O", "P", "Q", "R")
+
+micro2 <- data.frame(Lactobacillus, Acetobacter, Escherichia, Salmonella, Starter, Sample,
+                    row.names = Sample)
+head(micro2)
+
+  Lactobacillus Acetobacter Escherichia Salmonella Starter Sample
+A             0           0          21         20   FALSE      A
+B            20          30           0          1    TRUE      B
+C             0           4          10         40   FALSE      C
+D            10          14           2          0    TRUE      D
+E            15          28           0          1    TRUE      E
+F             2           3          20         25   FALSE      F
+```
+The first calculation we are going to do is a *PERMANOVA* (Permutational Multivariate Analysis of Variance) to evaluate how a factor (in this case a different sample, which putatively in your case have different 
+
+
+
+
+
 
