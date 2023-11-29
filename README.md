@@ -405,6 +405,25 @@ Escherichia    0.1893 0.06797 2.785 17.0000  0.6667 0.8234 9.999e-05 ***
 Lactobacillus  0.1593 0.03299 4.827  0.6667 15.0000 1.0000 9.999e-05 ***
 ```
 
+# Other statistical tests 
 
+## $\\chi^2$ (chi-square test)
+
+The idea of the Chi-square test ($\\chi^2$-test) is the comparison of the observed and expected frequencies (expected under the null hypothesis). The result must be put into the context of the degrees of freedom (df), which depends on the number of variables to test the association and the number of tests. To reject the null hypotesis with 95% confidence interval (CI), or in other words, with *p*<0.05, we will need an increase value of $\\chi^2$ as the df increase. 
+
+```
+# Run the test
+chisq.test(table(x,y)
+# Expected counts
+chisq.test(table(x,y)$expected
+# (observed - expected) / sqrt(expected)
+chisq.test(table(x,y)
+```
+
+The chi-square test may not be valid, if the expected cell counts get less than 5: try collapsing categories or using other tests in this case, *e.g.,* Fisher’s exact test:
+
+```
+fisher.test(table(x,y))
+```
 
 
